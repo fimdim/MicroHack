@@ -52,6 +52,9 @@ jobs:
   deploy:
     name: Provision & deploy
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 03-Azure/01-04-AI/01_Agentic_SDLC
     # TODO: Consider binding to a GitHub Environment (e.g. `environment: dev`) so
     #       you can add reviewers/approval gates and environment-scoped secrets.
     steps:
