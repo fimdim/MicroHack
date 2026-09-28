@@ -80,7 +80,8 @@ jobs:
 
       - name: Build & push images to ACR
         run: |
-          az acr build --registry "$ACR_NAME" --image "api:$IMAGE_TAG" src/api-ts
+          az acr build --registry "$ACR_NAME" --image "api:$IMAGE_TAG" \
+            --file src/api-ts/Dockerfile src
           az acr build --registry "$ACR_NAME" --image "frontend:$IMAGE_TAG" src/frontend
 
       - name: Deploy infrastructure (Bicep)

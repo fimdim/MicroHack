@@ -47,8 +47,10 @@ Azure **Container Apps** as the compute target:
 | `src/api-ts/Dockerfile` | `EXPOSE 3000` | `<prefix>-<env>-api` | `targetPort: 3000`. Ingress internal-vs-external is a **TODO** decision. |
 | `src/frontend/Dockerfile` | `EXPOSE 80` | `<prefix>-<env>-frontend` | `targetPort: 80`, external. Gets `API_HOST` = the api app name and `API_PORT` = `3000`. The entrypoint also honours `API_PROTOCOL` (default `https`). |
 
-The workflow builds each image from its own context (`src/api-ts` and
-`src/frontend`) and pushes to ACR; the Bicep then references those image tags.
+The workflow builds the API from the `src` context so its image includes the
+shared migrations and seed files in `src/database`. The frontend uses the
+`src/frontend` context. Both images are pushed to ACR, and the Bicep then
+references those image tags.
 
 ## Files
 

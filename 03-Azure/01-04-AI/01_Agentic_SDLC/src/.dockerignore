@@ -1,0 +1,9 @@
+**
+!api-ts/
+!api-ts/package.json
+!api-ts/package-lock.json
+!api-ts/tsconfig.json
+!api-ts/src/
+!api-ts/src/**
+!database/
+!database/**
