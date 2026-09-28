@@ -61,7 +61,7 @@ references those image tags.
 | `modules/loganalytics.bicep` | Log Analytics workspace (stub — retention/SKU TODO). |
 | `modules/containerapp-env.bicep` | Container Apps managed environment. |
 | `modules/containerapp.bicep` | Generic app module, reused for **both** api and frontend. |
-| `main.parameters.json` | Placeholder parameter values with TODO comments. |
+| `main.parameters.json` | Placeholder parameter values for local deployments. |
 
 ## What's provided vs. deliberately left as `TODO`
 
