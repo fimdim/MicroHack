@@ -69,8 +69,10 @@ references those image tags.
 
 - Module structure and the wiring between them.
 - Sensible parameters (`location`, `namePrefix`, `environmentName`, image
-  references, `minReplicas` / `maxReplicas`) and outputs (ACR login server,
-  frontend URL, api FQDN).
+  references, `minReplicas` / `maxReplicas`) and outputs (ACR name/login server,
+  frontend URL, api FQDN). The default ACR name includes a stable hash of the
+  subscription and resource group because registry DNS names are globally
+  unique.
 - The port mapping (api `3000`, frontend `80`) and the `API_HOST` / `API_PORT`
   proxy wiring between frontend and api.
 - OIDC-based CI/CD plumbing in the workflow (no long-lived secrets).
@@ -85,6 +87,9 @@ references those image tags.
 - **Registry auth** — ACR admin access is disabled. The user-assigned identity
   created by `setup-oidc.sh` receives `AcrPull` and is attached to both apps.
 - **Scaling** — each app runs with one warm replica and can scale to three.
+- **Health probes** — the API exposes `/health/live` and dependency-aware
+  `/health/ready` endpoints; Container Apps probes those routes directly. The
+  frontend uses `/` for both probes.
 
 ## Deploy it manually
 
@@ -101,6 +106,7 @@ az deployment group create \
   --template-file infra/main.bicep \
   --parameters infra/main.parameters.json \
   --parameters \
+      registryName="<globally-unique-acr-name>" \
       apiImage="<acr>.azurecr.io/api:<tag>" \
       frontendImage="<acr>.azurecr.io/frontend:<tag>"
 
@@ -113,7 +119,8 @@ az deployment group show -g <rg-name> -n main \
 > on a first run either point `apiImage` / `frontendImage` at a temporary public
 > placeholder image, deploy once to create the ACR, then build/push and redeploy
 > — **or** split provisioning: create the ACR first, push images, then deploy the
-> apps. The workflow leaves this ordering as a TODO for you to decide.
+> apps. The workflow uses the second approach and derives a stable,
+> collision-resistant registry name from the subscription and resource group.
 
 ## Deploy it via the workflow
 

@@ -24,6 +24,12 @@ param image string
 @description('The port the container listens on (api=3000, frontend=80).')
 param targetPort int
 
+@description('HTTP path used by the liveness probe.')
+param livenessPath string
+
+@description('HTTP path used by the readiness probe.')
+param readinessPath string
+
 @description('Whether ingress is exposed externally (public). Set false for internal-only.')
 param externalIngress bool = true
 
@@ -107,9 +113,33 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             memory: memory
           }
           env: env
-          // TODO: Add liveness/readiness probes so revisions only take traffic
-          //       once healthy (e.g. GET / on the frontend, a health route on
-          //       the api). Container Apps supports `probes: [...]` here.
+          probes: [
+            {
+              type: 'Liveness'
+              httpGet: {
+                path: livenessPath
+                port: targetPort
+                scheme: 'HTTP'
+              }
+              initialDelaySeconds: 10
+              periodSeconds: 10
+              timeoutSeconds: 3
+              failureThreshold: 3
+            }
+            {
+              type: 'Readiness'
+              httpGet: {
+                path: readinessPath
+                port: targetPort
+                scheme: 'HTTP'
+              }
+              initialDelaySeconds: 5
+              periodSeconds: 5
+              timeoutSeconds: 3
+              failureThreshold: 3
+              successThreshold: 1
+            }
+          ]
         }
       ]
       scale: {
