@@ -19,6 +19,7 @@ Default API URL: `http://localhost:3000`
 - `DB_ENABLE_WAL` (enable WAL mode; default: `true`)
 - `DB_FOREIGN_KEYS` (enforce foreign keys; default: `true`)
 - `DB_TIMEOUT` (busy timeout in ms; default: `30000`)
+- `PAYMENT_CHECKOUT_URL` (payment provider checkout endpoint; required for cart checkout)
 
 ## Database
 

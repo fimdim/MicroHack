@@ -50,15 +50,8 @@ param minReplicas int = 1
 @minValue(1)
 param maxReplicas int = 3
 
-// TODO: The scaffold passes ACR admin credentials into the frontend/api modules
-//       for a quick first deploy. Prefer a user-assigned managed identity with
-//       AcrPull and remove these entirely. Left as params so nothing is baked in.
-@description('ACR admin username (leave empty to switch modules to managed identity).')
-param registryUsername string = ''
-
-@description('ACR admin password (leave empty to switch modules to managed identity).')
-@secure()
-param registryPassword string = ''
+@description('Resource ID of the user-assigned identity used by Container Apps to pull images.')
+param managedIdentityResourceId string
 
 // -----------------------------------------------------------------------------
 // Derived names. Registry names must be globally unique and alphanumeric only.
@@ -86,6 +79,26 @@ module registry 'modules/registry.bicep' = {
     location: location
     registryName: registryName
     tags: commonTags
+    adminUserEnabled: false
+  }
+}
+
+resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: last(split(managedIdentityResourceId, '/'))
+  scope: resourceGroup(subscription().subscriptionId, split(managedIdentityResourceId, '/')[4])
+}
+
+resource registryForRole 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' existing = {
+  name: registryName
+}
+
+resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(registryName, managedIdentityResourceId, 'acrpull')
+  scope: registryForRole
+  properties: {
+    principalId: managedIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
   }
 }
 
@@ -129,10 +142,9 @@ module apiApp 'modules/containerapp.bicep' = {
     environmentId: environment.outputs.environmentId
     image: apiImage
     targetPort: 3000
-    externalIngress: true
+    externalIngress: false
     registryLoginServer: registry.outputs.loginServer
-    registryUsername: registryUsername
-    registryPassword: registryPassword
+    managedIdentityResourceId: managedIdentityResourceId
     minReplicas: minReplicas
     maxReplicas: maxReplicas
     tags: commonTags
@@ -157,8 +169,7 @@ module frontendApp 'modules/containerapp.bicep' = {
     targetPort: 80
     externalIngress: true
     registryLoginServer: registry.outputs.loginServer
-    registryUsername: registryUsername
-    registryPassword: registryPassword
+    managedIdentityResourceId: managedIdentityResourceId
     minReplicas: minReplicas
     maxReplicas: maxReplicas
     tags: commonTags
@@ -173,6 +184,10 @@ module frontendApp 'modules/containerapp.bicep' = {
         //       reaches it on 3000 within the environment (it should). If you
         //       front the api on 443/https externally, adjust API_PORT/PROTOCOL.
         value: '3000'
+      }
+      {
+        name: 'API_PROTOCOL'
+        value: 'http'
       }
       // TODO: The entrypoint also honours API_PROTOCOL (default https). Add it
       //       here if your ingress/scheme requires it.

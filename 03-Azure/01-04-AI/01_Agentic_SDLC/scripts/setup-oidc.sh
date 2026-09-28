@@ -20,12 +20,12 @@
 
 set -euo pipefail
 
-RESOURCE_GROUP=""
-LOCATION=""
-REPO=""
+RESOURCE_GROUP="rg-microhack-agenticsdlc"
+LOCATION="swedencentral"
+REPO="fimdim/microhack"
 BRANCH="main"
 GH_ENVIRONMENT=""
-IDENTITY_NAME=""
+IDENTITY_NAME="sp-microhack-agenticsdlc"
 ROLE="Contributor"
 
 while getopts "g:l:r:b:e:n:R:h" opt; do

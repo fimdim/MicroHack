@@ -9,6 +9,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -54,5 +56,32 @@ class ApiEndpointsTest {
         mockMvc.perform(get("/api/headquarters/1/label"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.label").value("Location:CatTech Global HQCity:Country:"));
+    }
+
+    @Test
+    void cartAddsUpdatesAndRemovesProducts() throws Exception {
+        mockMvc.perform(delete("/api/cart/1"));
+
+        mockMvc.perform(post("/api/cart")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"productId\":1,\"quantity\":2}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].productId").value(1))
+            .andExpect(jsonPath("$.items[0].quantity").value(2))
+            .andExpect(jsonPath("$.total").isNumber());
+
+        mockMvc.perform(put("/api/cart/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"quantity\":3}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].quantity").value(3));
+
+        mockMvc.perform(delete("/api/cart/1"))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/cart"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items").isEmpty())
+            .andExpect(jsonPath("$.total").value(0));
     }
 }

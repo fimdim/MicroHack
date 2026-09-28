@@ -30,7 +30,7 @@ param sku string = 'Basic'
 //       admin user DISABLED and grant the Container Apps' identity AcrPull
 //       instead. The scaffold defaults to enabled to keep first-run simple —
 //       flip this to false once you wire up role assignments.
-param adminUserEnabled bool = true
+param adminUserEnabled bool = false
 
 resource registry 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
   name: registryName

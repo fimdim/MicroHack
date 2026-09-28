@@ -45,7 +45,7 @@ fi
 
 cat > /usr/share/nginx/html/runtime-config.js << EOF
 window.RUNTIME_CONFIG = {
-  API_URL: "${API_PROTOCOL}://${API_HOST}${PORT_SECTION}"
+  API_URL: ""
 };
 console.log("Runtime config loaded:", window.RUNTIME_CONFIG);
 EOF
@@ -54,6 +54,13 @@ EOF
 echo "Generated runtime config:"
 cat /usr/share/nginx/html/runtime-config.js
 echo ""
+
+# Render the internal API target into nginx before starting it. The browser uses
+# same-origin /api requests, so the internal Container Apps hostname is never
+# exposed to clients.
+sed "s|\${API_HOST}|$API_HOST|g; s|\${API_PORT}|$API_PORT|g" \
+  /etc/nginx/conf.d/default.conf > /tmp/default.conf
+mv /tmp/default.conf /etc/nginx/conf.d/default.conf
 
 # Start nginx
 echo "Starting nginx..."

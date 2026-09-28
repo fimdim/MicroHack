@@ -59,19 +59,19 @@ param memory string = '1.0Gi'
 //       approach is a user-assigned managed identity with the AcrPull role and
 //       `identity: '<managed-identity-resource-id>'` on the registry entry — no
 //       secrets at all. Swap this out once you wire up the identity + role.
-@description('ACR admin username (leave empty when using managed identity).')
-param registryUsername string = ''
-
-@description('ACR admin password (leave empty when using managed identity).')
-@secure()
-param registryPassword string = ''
-
-var useAdminCreds = !empty(registryUsername)
+@description('Resource ID of the user-assigned identity used to pull the image.')
+param managedIdentityResourceId string
 
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: appName
   location: location
   tags: tags
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${managedIdentityResourceId}': {}
+    }
+  }
   properties: {
     managedEnvironmentId: environmentId
     configuration: {
@@ -87,21 +87,13 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           }
         ]
       }
-      // Only attach registry credentials when using admin creds. With a managed
-      // identity you would set `identity` here and omit the secret.
-      registries: useAdminCreds ? [
+      registries: [
         {
           server: registryLoginServer
-          username: registryUsername
-          passwordSecretRef: 'registry-password'
+          identity: managedIdentityResourceId
         }
-      ] : []
-      secrets: useAdminCreds ? [
-        {
-          name: 'registry-password'
-          value: registryPassword
-        }
-      ] : []
+      ]
+      secrets: []
       // TODO: Add application secrets here (DB connection strings, API keys, ...)
       //       and reference them from env via secretRef instead of value.
     }

@@ -9,12 +9,12 @@
     "environmentName": {
       "value": "dev"
     },
-    "_comment_images": "TODO: Replace <acr> with your registry login server once the ACR name is known. The workflow builds/pushes these tags. On a first bootstrap you may point at a public placeholder image until the real images exist.",
+    "_comment_images": "Image values are overridden by the deployment workflow after it builds and pushes both images.",
     "apiImage": {
-      "value": "<acr>.azurecr.io/api:latest"
+      "value": "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
     },
     "frontendImage": {
-      "value": "<acr>.azurecr.io/frontend:latest"
+      "value": "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
     },
     "minReplicas": {
       "value": 1
@@ -22,12 +22,8 @@
     "maxReplicas": {
       "value": 3
     },
-    "_comment_registry_creds": "TODO: These enable the simplest ACR-admin-credentials path for a first deploy. Prefer a user-assigned managed identity with AcrPull and leave these empty. Never commit real values — pass them at deploy time (e.g. from the workflow) instead.",
-    "registryUsername": {
-      "value": ""
-    },
-    "registryPassword": {
-      "value": ""
+    "managedIdentityResourceId": {
+      "value": "/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<identity-name>"
     }
   }
 }

@@ -1,4 +1,4 @@
-# `infra/` — Challenge 5 starter scaffold (optional)
+# `infra/` — Challenge 5 Azure deployment
 
 > **Optional starting point, not a required or "correct" answer.** This is a
 > deliberately incomplete **skeleton** for [Challenge 5 — Deploy into Azure](../challenges/challenge-05.md).
@@ -73,24 +73,16 @@ The workflow builds each image from its own context (`src/api-ts` and
   proxy wiring between frontend and api.
 - OIDC-based CI/CD plumbing in the workflow (no long-lived secrets).
 
-**Left as `TODO` (the decisions that make this a real deploy — do these):**
+**Implemented deployment decisions:**
 
-- **SKUs** — ACR tier, Log Analytics retention, container CPU/memory.
-- **api ingress visibility** — public (its own URL, easy debugging) vs.
-  internal-only (reached solely by the frontend inside the environment).
-- **Database / storage strategy** — the api ships with an in-container
-  **SQLite** DB. In Container Apps that is **ephemeral** (it resets on every
-  revision/scale event). Choose one: keep it ephemeral for a demo, mount an
-  **Azure Files** volume to persist it, or move to a **managed DB**
-  (Azure SQL / PostgreSQL) and inject a connection string. *Not decided for you.*
-- **Registry auth** — the scaffold defaults to ACR **admin credentials** for a
-  fast first deploy; the preferred approach is a **user-assigned managed
-  identity** with the `AcrPull` role (no secrets). Swap it in.
-- **Env vars / secrets** — real app configuration and how it's referenced.
-- **Scaling rules** — replica counts are set, but add real scale triggers
-  (HTTP concurrency, CPU, ...).
-- **Service discovery** — confirm the frontend→api wiring works with whichever
-  ingress visibility you pick.
+- **SKUs** — Basic ACR, 30-day Log Analytics retention, and 0.5 vCPU / 1 GiB
+  containers keep the demo within a small budget.
+- **Ingress** — the API is internal-only; the public frontend reverse-proxies
+  same-origin `/api` requests to it.
+- **Database** — the shipped SQLite database remains ephemeral for this demo.
+- **Registry auth** — ACR admin access is disabled. The user-assigned identity
+  created by `setup-oidc.sh` receives `AcrPull` and is attached to both apps.
+- **Scaling** — each app runs with one warm replica and can scale to three.
 
 ## Deploy it manually
 

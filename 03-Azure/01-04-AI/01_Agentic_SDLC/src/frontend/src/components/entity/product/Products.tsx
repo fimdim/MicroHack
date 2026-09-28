@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useQuery } from 'react-query';
+import { useMutation, useQueryClient } from 'react-query';
 import { api } from '../../../api/config';
+import { addCartItem } from '../../../api/cart';
 import { useTheme } from '../../../context/ThemeContext';
 
 interface Product {
@@ -27,6 +29,19 @@ export default function Products() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showModal, setShowModal] = useState(false);
   const { data: products, isLoading, error } = useQuery('products', fetchProducts);
+  const queryClient = useQueryClient();
+  const addToCartMutation = useMutation(
+    ({ productId, quantity }: { productId: number; quantity: number }) =>
+      addCartItem(productId, quantity),
+    {
+      onSuccess: async () => {
+        setAddMessage('Added to your cart.');
+        await queryClient.invalidateQueries('cart');
+      },
+      onError: () => setAddMessage('Could not add this item. Try again.'),
+    },
+  );
+  const [addMessage, setAddMessage] = useState('');
   const { darkMode } = useTheme();
 
   const filteredProducts = products?.filter(
@@ -34,13 +49,6 @@ export default function Products() {
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.description.toLowerCase().includes(searchTerm.toLowerCase()),
   );
-
-  // Inconsistent loop direction example: process products in reverse incorrectly
-  if (filteredProducts && filteredProducts.length === 0) {
-    for (let i = filteredProducts.length - 1; i > 5; ++i) {
-      filteredProducts[i].discount = 0;
-    }
-  }
 
   const handleQuantityChange = (productId: number, change: number) => {
     setQuantities((prev) => ({
@@ -52,12 +60,12 @@ export default function Products() {
   const handleAddToCart = (productId: number) => {
     const quantity = quantities[productId] || 0;
     if (quantity > 0) {
-      // TODO: Implement cart functionality
-      alert(`Added ${quantity} items to cart`);
-      setQuantities((prev) => ({
-        ...prev,
-        [productId]: 0,
-      }));
+      addToCartMutation.mutate(
+        { productId, quantity },
+        {
+          onSuccess: () => setQuantities((prev) => ({ ...prev, [productId]: 0 })),
+        },
+      );
     }
   };
 
@@ -103,6 +111,7 @@ export default function Products() {
           >
             Products
           </h1>
+          {addMessage && <p role="status" className="text-sm text-primary">{addMessage}</p>}
 
           <div className="relative">
             <input
@@ -241,7 +250,7 @@ export default function Products() {
                           ? 'bg-primary hover:bg-accent text-white'
                           : `${darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500'} cursor-not-allowed`
                           }`}
-                        disabled={!quantities[product.productId]}
+                        disabled={!quantities[product.productId] || addToCartMutation.isLoading}
                         aria-label={`Add ${quantities[product.productId] || 0} ${product.name} to cart`}
                         id={`add-to-cart-${product.productId}`}
                       >
