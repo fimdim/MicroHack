@@ -43,8 +43,6 @@ env:
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
   LOCATION: ${{ vars.AZURE_LOCATION }}
-  # Must match namePrefix + environmentName + "acr" in infra/main.bicep.
-  ACR_NAME: fmoctocatdevacr
   IDENTITY_RESOURCE_ID: ${{ vars.AZURE_IDENTITY_RESOURCE_ID }}
   IMAGE_TAG: ${{ github.sha }}
 
@@ -70,10 +68,24 @@ jobs:
         run: |
           az group create --name "$RESOURCE_GROUP" --location "$LOCATION" --output none
 
+      - name: Select container registry name
+        run: |
+          SUFFIX=$(printf '%s' "$AZURE_SUBSCRIPTION_ID:$RESOURCE_GROUP" | sha256sum | cut -c1-12)
+          echo "ACR_NAME=octocatdev${SUFFIX}acr" >> "$GITHUB_ENV"
+
       - name: Ensure container registry
         run: |
-          az acr create --name "$ACR_NAME" --resource-group "$RESOURCE_GROUP" \
-            --location "$LOCATION" --sku Basic --admin-enabled false --output none
+          if az acr show --name "$ACR_NAME" --resource-group "$RESOURCE_GROUP" --output none 2>/dev/null; then
+            echo "Reusing container registry $ACR_NAME"
+          else
+            AVAILABLE=$(az acr check-name --name "$ACR_NAME" --query nameAvailable -o tsv)
+            if [ "$AVAILABLE" != "true" ]; then
+              echo "::error::Container registry name $ACR_NAME is unavailable. Set a different naming seed or remove the conflicting registry."
+              exit 1
+            fi
+            az acr create --name "$ACR_NAME" --resource-group "$RESOURCE_GROUP" \
+              --location "$LOCATION" --sku Basic --admin-enabled false --output none
+          fi
 
       - name: Build & push images to ACR
         run: |
@@ -88,6 +100,7 @@ jobs:
             --template-file infra/main.bicep \
             --parameters infra/main.parameters.json \
             --parameters \
+              registryName="$ACR_NAME" \
               managedIdentityResourceId="$IDENTITY_RESOURCE_ID" \
               apiImage="$ACR_NAME.azurecr.io/api:$IMAGE_TAG" \
               frontendImage="$ACR_NAME.azurecr.io/frontend:$IMAGE_TAG"
@@ -96,5 +109,11 @@ jobs:
         run: |
           URL=$(az deployment group show -g "$RESOURCE_GROUP" -n main \
             --query properties.outputs.frontendUrl.value -o tsv)
+          API_APP=$(az deployment group show -g "$RESOURCE_GROUP" -n main \
+            --query properties.outputs.apiAppName.value -o tsv)
           echo "Application URL: $URL"
           curl --fail --retry 10 --retry-delay 5 "$URL"
+          az containerapp exec \
+            --name "$API_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --command "wget -qO- http://localhost:3000/health/ready"

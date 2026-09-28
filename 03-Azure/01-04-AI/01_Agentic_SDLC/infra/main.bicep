@@ -34,7 +34,13 @@ param location string = resourceGroup().location
 param namePrefix string = 'octocat'
 
 @description('Environment name / suffix (e.g. dev, test, hack). Keeps names unique per env.')
+@maxLength(12)
 param environmentName string = 'dev'
+
+@description('Globally unique Azure Container Registry name. Defaults to a stable name unique to this subscription and resource group.')
+@minLength(5)
+@maxLength(50)
+param registryName string = toLower(replace('${namePrefix}${environmentName}${uniqueString(subscription().subscriptionId, resourceGroup().id)}acr', '-', ''))
 
 @description('Container image reference for the API (e.g. <acr>.azurecr.io/api:<tag>).')
 param apiImage string
@@ -57,7 +63,6 @@ param managedIdentityResourceId string
 // Derived names. Registry names must be globally unique and alphanumeric only.
 // -----------------------------------------------------------------------------
 var baseName = '${namePrefix}-${environmentName}'
-var registryName = toLower(replace('${namePrefix}${environmentName}acr', '-', ''))
 var logAnalyticsName = '${baseName}-logs'
 var environmentResourceName = '${baseName}-env'
 var apiAppName = '${baseName}-api'
@@ -95,6 +100,9 @@ resource registryForRole 'Microsoft.ContainerRegistry/registries@2023-11-01-prev
 resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(registryName, managedIdentityResourceId, 'acrpull')
   scope: registryForRole
+  dependsOn: [
+    registry
+  ]
   properties: {
     principalId: managedIdentity.properties.principalId
     principalType: 'ServicePrincipal'
@@ -142,6 +150,8 @@ module apiApp 'modules/containerapp.bicep' = {
     environmentId: environment.outputs.environmentId
     image: apiImage
     targetPort: 3000
+    livenessPath: '/health/live'
+    readinessPath: '/health/ready'
     externalIngress: false
     registryLoginServer: registry.outputs.loginServer
     managedIdentityResourceId: managedIdentityResourceId
@@ -167,6 +177,8 @@ module frontendApp 'modules/containerapp.bicep' = {
     environmentId: environment.outputs.environmentId
     image: frontendImage
     targetPort: 80
+    livenessPath: '/'
+    readinessPath: '/'
     externalIngress: true
     registryLoginServer: registry.outputs.loginServer
     managedIdentityResourceId: managedIdentityResourceId
@@ -201,8 +213,14 @@ module frontendApp 'modules/containerapp.bicep' = {
 @description('ACR login server — push images here and reference them in the apps.')
 output acrLoginServer string = registry.outputs.loginServer
 
+@description('Globally unique name of the Azure Container Registry.')
+output acrName string = registry.outputs.registryName
+
 @description('Public URL of the frontend app.')
 output frontendUrl string = 'https://${frontendApp.outputs.fqdn}'
 
 @description('FQDN of the api app (public only while externalIngress is true).')
 output apiFqdn string = apiApp.outputs.fqdn
+
+@description('Name of the API Container App.')
+output apiAppName string = apiApp.outputs.appName
